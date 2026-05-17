@@ -61,7 +61,7 @@ export async function POST(req: Request) {
   if (!text) {
     return NextResponse.json({ error: "empty" }, { status: 400 });
   }
-  if (text.length > 140) {
+  if (text.length > 20) {
     return NextResponse.json({ error: "too_long" }, { status: 400 });
   }
   if (isBlocked(text)) {

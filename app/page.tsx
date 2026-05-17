@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase, type Mood } from "@/lib/supabase";
-import { extractWords } from "@/lib/words";
 import BreathSurface from "@/components/BreathSurface";
 import MoodForm from "@/components/MoodForm";
 import GrainField from "@/components/GrainField";
@@ -26,11 +25,6 @@ export default function HomePage() {
     fetchMoods();
   }, [fetchMoods]);
 
-  const words = useMemo(
-    () => extractWords(moods.map((m) => m.text)),
-    [moods]
-  );
-
   return (
     <>
       <div className="pulseline" aria-hidden="true" />
@@ -53,14 +47,14 @@ export default function HomePage() {
             <span className="nb">이제 차분히 내 마음을 발견하여</span>
             <br />
             <span className="nb">
-              한 개의 단어 또는, 하나의 문장으로 기록합니다.
+              한 개의 단어 또는, 하나의 짧은 문장으로 기록합니다.
             </span>
           </p>
         </section>
 
         <MoodForm onSubmitted={fetchMoods} />
 
-        <GrainField words={words} total={total} />
+        <GrainField moods={moods} total={total} />
       </main>
 
       <footer className="bot">

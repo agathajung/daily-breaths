@@ -1,13 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { Mood } from "@/lib/supabase";
 
 type Props = {
-  words: string[];
+  moods: Mood[];
   total: number;
 };
 
-// 단어별 일관된 해시 (같은 단어 = 항상 같은 fade 톤). 결의 자연스러움.
+// 24시간 시간 흐림 — 갓 적은 글은 흐름에 합류하지 않음.
+// 모든 사용자에게 동일한 규칙이라 자기 글 식별 불가.
+const FRESH_HIDE_MS = 24 * 60 * 60 * 1000;
+
+// 같은 표현은 항상 같은 fade 톤 (결의 자연스러움 유지).
 function hashCode(s: string): number {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = ((h * 31) + s.charCodeAt(i)) | 0;
@@ -15,8 +20,8 @@ function hashCode(s: string): number {
 }
 
 const FADES = ["fresh", "", "fade1", "fade2", "fade3"] as const;
-function fadeClass(word: string): string {
-  return FADES[hashCode(word) % FADES.length];
+function fadeClass(text: string): string {
+  return FADES[hashCode(text) % FADES.length];
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -28,12 +33,20 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-export default function GrainField({ words, total }: Props) {
-  const [shuffled, setShuffled] = useState<string[]>([]);
+export default function GrainField({ moods, total }: Props) {
+  const [shuffled, setShuffled] = useState<Mood[]>([]);
+
+  // 24시간 이상 된 글만 흐름에 노출. 클라이언트에서 필터.
+  const settled = useMemo(() => {
+    const now = Date.now();
+    return moods.filter(
+      (m) => now - new Date(m.created_at).getTime() >= FRESH_HIDE_MS
+    );
+  }, [moods]);
 
   useEffect(() => {
-    setShuffled(shuffle(words));
-  }, [words]);
+    setShuffled(shuffle(settled));
+  }, [settled]);
 
   const empty = shuffled.length === 0;
   const count = total.toLocaleString("ko-KR");
@@ -57,9 +70,9 @@ export default function GrainField({ words, total }: Props) {
           </div>
         ) : (
           <div className="grain-inner">
-            {shuffled.map((w, i) => (
-              <span key={w} className={fadeClass(w)}>
-                {w}
+            {shuffled.map((m, i) => (
+              <span key={m.id} className={fadeClass(m.text)}>
+                {m.text}
                 {i < shuffled.length - 1 ? "· " : ""}
               </span>
             ))}

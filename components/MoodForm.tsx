@@ -6,10 +6,13 @@ type Props = {
   onSubmitted?: () => void;
 };
 
+const MAX_LEN = 20;
+const COUNT_WARN = 15;
+
 const ERROR_MSG: Record<string, string> = {
   blocked: "광고·욕설 등은 기록할 수 없어요.",
-  too_long: "140자 이내로 적어 주세요.",
-  empty: "한 단어 또는 한 문장을 적어 주세요.",
+  too_long: `${MAX_LEN}자 이내로 적어 주세요.`,
+  empty: "한 단어 또는 짧은 한 문장을 적어 주세요.",
 };
 
 export default function MoodForm({ onSubmitted }: Props) {
@@ -59,7 +62,7 @@ export default function MoodForm({ onSubmitted }: Props) {
       res = await fetch("/api/moods", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ text: trimmed.slice(0, 140) }),
+        body: JSON.stringify({ text: trimmed.slice(0, MAX_LEN) }),
       });
     } catch {
       setSending(false);
@@ -108,9 +111,9 @@ export default function MoodForm({ onSubmitted }: Props) {
             requestAnimationFrame(autoSize);
           }}
           onKeyDown={onKeyDown}
-          maxLength={140}
+          maxLength={MAX_LEN}
           rows={1}
-          placeholder="한 단어 또는 한 문장"
+          placeholder="한 단어 또는 짧은 한 문장"
           autoComplete="off"
           aria-label="오늘의 마음 한 줄"
         />
@@ -120,7 +123,9 @@ export default function MoodForm({ onSubmitted }: Props) {
       </form>
       <div className="form-meta">
         <span>익명 · 한 번의 호흡으로</span>
-        <span className={"count" + (n > 120 ? " over" : "")}>{n} / 140</span>
+        <span className={"count" + (n > COUNT_WARN ? " over" : "")}>
+          {n} / {MAX_LEN}
+        </span>
       </div>
       <div
         className={
