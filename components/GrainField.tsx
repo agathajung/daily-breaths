@@ -1,21 +1,41 @@
-import type { Mood } from "@/lib/supabase";
+"use client";
+
+import { useEffect, useState } from "react";
 
 type Props = {
-  moods: Mood[];
+  words: string[];
   total: number;
 };
 
-function fadeClass(i: number, n: number): string {
-  const ratio = i / Math.max(n, 1);
-  if (ratio < 0.04) return "fresh";
-  if (ratio < 0.18) return "";
-  if (ratio < 0.45) return "fade1";
-  if (ratio < 0.75) return "fade2";
-  return "fade3";
+// 단어별 일관된 해시 (같은 단어 = 항상 같은 fade 톤). 결의 자연스러움.
+function hashCode(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = ((h * 31) + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
 }
 
-export default function GrainField({ moods, total }: Props) {
-  const empty = moods.length === 0;
+const FADES = ["fresh", "", "fade1", "fade2", "fade3"] as const;
+function fadeClass(word: string): string {
+  return FADES[hashCode(word) % FADES.length];
+}
+
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+export default function GrainField({ words, total }: Props) {
+  const [shuffled, setShuffled] = useState<string[]>([]);
+
+  useEffect(() => {
+    setShuffled(shuffle(words));
+  }, [words]);
+
+  const empty = shuffled.length === 0;
   const count = total.toLocaleString("ko-KR");
 
   return (
@@ -37,10 +57,10 @@ export default function GrainField({ moods, total }: Props) {
           </div>
         ) : (
           <div className="grain-inner">
-            {moods.map((m, i) => (
-              <span key={m.id} className={fadeClass(i, moods.length)}>
-                {m.text}
-                {i < moods.length - 1 ? "· " : ""}
+            {shuffled.map((w, i) => (
+              <span key={w} className={fadeClass(w)}>
+                {w}
+                {i < shuffled.length - 1 ? "· " : ""}
               </span>
             ))}
           </div>

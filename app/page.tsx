@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase, type Mood } from "@/lib/supabase";
+import { extractWords } from "@/lib/words";
 import BreathSurface from "@/components/BreathSurface";
 import MoodForm from "@/components/MoodForm";
 import GrainField from "@/components/GrainField";
-import RecentList from "@/components/RecentList";
 
 export default function HomePage() {
   const [moods, setMoods] = useState<Mood[]>([]);
@@ -25,6 +25,11 @@ export default function HomePage() {
   useEffect(() => {
     fetchMoods();
   }, [fetchMoods]);
+
+  const words = useMemo(
+    () => extractWords(moods.map((m) => m.text)),
+    [moods]
+  );
 
   return (
     <>
@@ -47,15 +52,15 @@ export default function HomePage() {
           <p>
             <span className="nb">이제 차분히 내 마음을 발견하여</span>
             <br />
-            <span className="nb">한 개의 단어 또는, 하나의 문장으로 기록합니다.</span>
+            <span className="nb">
+              한 개의 단어 또는, 하나의 문장으로 기록합니다.
+            </span>
           </p>
         </section>
 
         <MoodForm onSubmitted={fetchMoods} />
 
-        <GrainField moods={moods} total={total} />
-
-        <RecentList moods={moods} />
+        <GrainField words={words} total={total} />
       </main>
 
       <footer className="bot">
