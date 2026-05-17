@@ -45,11 +45,37 @@ const STOPWORDS = new Set<string>([
   "너", "저", "우리",
 ]);
 
-// 단어 정규화. '내가' → '내' → '나'처럼 같은 의미를 한 단어로 모음.
+// 인칭 정규화. '내가' → '내' → '나'처럼 같은 의미를 한 단어로 모음.
 const NORMALIZE: Record<string, string> = {
   "내": "나",
   "제": "저",
 };
+
+// 마음 표현 동사/형용사 활용형 → 사전형(기본형) 정규화.
+// 같은 동사를 다른 활용형으로 적어도 한 단어로 흐름에 모이게 함.
+// 새 마음 동사·형용사 발견 시 여기에 활용형들 추가.
+const VERB_NORMALIZE: Record<string, string> = {
+  // 지치다 (마음/몸 피로)
+  "지친": "지치다", "지쳐": "지치다", "지쳤": "지치다",
+  "지쳤어": "지치다", "지쳤어요": "지치다", "지치는": "지치다",
+  "지쳐서": "지치다", "지칩": "지치다", "지칩니다": "지치다",
+  // 쉬어가다 (잠시 멈춤)
+  "쉬어가": "쉬어가다", "쉬어가는": "쉬어가다", "쉬어가서": "쉬어가다",
+  "쉬어가면": "쉬어가다", "쉬어가요": "쉬어가다", "쉬어간": "쉬어가다",
+  // 차분하다 (정온)
+  "차분": "차분하다", "차분히": "차분하다", "차분한": "차분하다",
+  "차분해": "차분하다", "차분해요": "차분하다", "차분합니다": "차분하다",
+  // 조용하다 (정온)
+  "조용": "조용하다", "조용히": "조용하다", "조용한": "조용하다",
+  "조용해": "조용하다", "조용해요": "조용하다", "조용합니다": "조용하다",
+  // 고요하다 (정온)
+  "고요한": "고요하다", "고요해": "고요하다", "고요히": "고요하다",
+  // 평온하다
+  "평온한": "평온하다", "평온해": "평온하다", "평온해요": "평온하다",
+};
+
+// 사전형 화이트리스트 — 이 형태로 정규화된 단어는 verb-form 차단을 우회.
+const VERB_DICT = new Set(Object.values(VERB_NORMALIZE));
 
 // 조사 — 긴 것 먼저 매칭.
 const PARTICLES = [
@@ -85,7 +111,7 @@ function strip(word: string): string {
 }
 
 function normalize(w: string): string {
-  return NORMALIZE[w] ?? w;
+  return NORMALIZE[w] ?? VERB_NORMALIZE[w] ?? w;
 }
 
 // 한국어 동사/형용사 활용형 — 종결어미·연결어미·부사화 어미 차단.
@@ -103,8 +129,6 @@ function isVerbForm(word: string): boolean {
   if (word.length >= 3 && word.endsWith("다")) return true;
   // 3자 이상 + 연결어미 (더워서/더우면/더우니까/덥지만/그런데/그러며)
   if (word.length >= 3 && /(서|면|며|니까|지만|는데)$/.test(word)) return true;
-  // 3자 이상 + 부사화 '히' (차분히/조용히/은근히)
-  if (word.length >= 3 && word.endsWith("히")) return true;
   return false;
 }
 
@@ -117,13 +141,27 @@ export function extractWords(texts: string[]): string[] {
       .filter(Boolean);
     for (const tok of tokens) {
       if (tok.length < 1) continue;
-      const stripped = strip(tok);
-      const candidate = normalize(stripped || tok);
+      // 1) 원본 토큰이 마음 동사·형용사 사전에 직접 매핑되면 strip 건너뜀.
+      //    예: '고요한' → '고요하다' (strip이 '한'을 떼서 '고요'로 만들기 전에 잡음)
+      let candidate: string;
+      if (VERB_NORMALIZE[tok]) {
+        candidate = VERB_NORMALIZE[tok];
+      } else if (NORMALIZE[tok]) {
+        candidate = NORMALIZE[tok];
+      } else {
+        const stripped = strip(tok);
+        candidate = normalize(stripped || tok);
+      }
       if (!candidate) continue;
       // 한글(완성형/자모) / 영문 / 숫자만 허용 — mojibake 자동 차단.
       if (!/^[가-힯ㄱ-ㆎa-zA-Z0-9]+$/.test(candidate)) continue;
       if (STOPWORDS.has(candidate)) continue;
       if (STOPWORDS.has(tok)) continue;
+      // 사전형으로 정규화된 마음 동사·형용사는 verb-form 차단 우회.
+      if (VERB_DICT.has(candidate)) {
+        out.add(candidate);
+        continue;
+      }
       if (isVerbForm(candidate)) continue;
       out.add(candidate);
     }
